@@ -1,0 +1,17 @@
+User-agent: *
+Disallow: /Logs/
+Disallow: /idsg/
+Disallow: /Soda/
+Disallow: /Chairconf/
+Disallow: /GradAffairs/Manual/
+Disallow: /Programs/Manual/
+Disallow: /Confidential-Case-Materials/
+Disallow: /Faculty-Meetings/
+Disallow: /Faculty-Rankings/
+Disallow: /Faculty-Candidates/
+Disallow: /Faculty-Restricted/
+Disallow: /EE-Recruiting-Data/
+Disallow: /IPRO/Software/Catalog/addl.resource.html
+Disallow: /IPRO/Software/Catalog/whats.new.html
+Disallow: /Rosters
+Sitemap: /sitemap.txt
