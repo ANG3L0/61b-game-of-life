@@ -173,9 +173,7 @@ public class Ocean {
    input queries x,y
    output (x mod width, y mod height)
   */
-  private int[] modReturn(int x, int y){
-    //x--;
-    //y--;
+  public int[] modReturn(int x, int y){
     int newX;
     int newY;
     int xmod = x%this.width;
@@ -287,6 +285,10 @@ public class Ocean {
 
   public void addShark(int x, int y, int feeding) {
     // Your solution here.
+    int[] gridCoord = this.modReturn(x,y);
+    if (grid[gridCoord[0]][gridCoord[1]].getCritterType() == EMPTY){
+      grid[gridCoord[0]][gridCoord[1]] = new Shark(feeding);
+    }
   }
 
   /**
@@ -307,7 +309,11 @@ public class Ocean {
 
   public int sharkFeeding(int x, int y) {
     // Replace the following line with your solution.
-    return 0;
+    int typ = cellContents(x,y);
+    if (typ==SHARK)
+		return ((Shark) this.grid[x][y]).getStarveTime();
+	else
+		return -1;
   }
 
 }

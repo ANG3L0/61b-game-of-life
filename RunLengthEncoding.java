@@ -27,14 +27,19 @@ public class RunLengthEncoding {
    *  Define any variables associated with a RunLengthEncoding object here.
    *  These variables MUST be private.
    */
-
+  private int width; //width of ocean
+  private int height; //height of ocean
+  private int st; //starve time
+  private DLList dllist; //doubly-linked list.
+  private DLNode iterator; //doubly-linked node.
+  private DLNode preit = new DLNode(); //the -1th node in the list for nextRun();
 
 
   /**
    *  The following methods are required for Part II.
    */
 
-  /**
+	/**
    *  RunLengthEncoding() (with three parameters) is a constructor that creates
    *  a run-length encoding of an empty ocean having width i and height j,
    *  in which sharks starve after starveTime timesteps.
@@ -45,6 +50,17 @@ public class RunLengthEncoding {
 
   public RunLengthEncoding(int i, int j, int starveTime) {
     // Your solution here.
+    this.width = i;
+    this.height = j;
+    this.st = starveTime;
+    this.dllist = new DLList();
+    
+    DLNode initNode = new DLNode(Ocean.EMPTY, i*j, st);
+    this.dllist.pushEnd(initNode);
+	
+	preit.next = this.dllist.head;
+	this.iterator = preit; //write the iterator to point to
+	//the head of the list.
   }
 
   /**
@@ -67,6 +83,20 @@ public class RunLengthEncoding {
   public RunLengthEncoding(int i, int j, int starveTime,
                            int[] runTypes, int[] runLengths) {
     // Your solution here.
+    this.width = i;
+    this.height = j;
+    this.st = starveTime;
+    this.dllist = new DLList();
+    int numRuns = runTypes.length;
+    
+    //keep pushing nodes with kth runTypes/runLengths
+    //iterations = # of total runs.
+    for (int k = 0; k < numRuns; k++){
+		dllist.pushEnd(new DLNode(runTypes[k], runLengths[k], this.st));
+	}
+	preit.next = this.dllist.head;
+	this.iterator = preit; //write the iterator to point to
+	//the head of the list.
   }
 
   /**
@@ -94,6 +124,8 @@ public class RunLengthEncoding {
 
   public void restartRuns() {
     // Your solution here.
+    preit.next = this.dllist.head;
+    this.iterator = preit;
   }
 
   /**
@@ -107,7 +139,12 @@ public class RunLengthEncoding {
 
   public TypeAndSize nextRun() {
     // Replace the following line with your solution.
-    return new TypeAndSize(Ocean.EMPTY, 1);
+    this.iterator = this.iterator.next;
+    if (this.iterator != null){
+		return this.iterator.data;
+	} else {
+		return null;
+	}
   }
 
   /**
@@ -119,7 +156,63 @@ public class RunLengthEncoding {
 
   public Ocean toOcean() {
     // Replace the following line with your solution.
-    return new Ocean(1, 1, 1);
+    DLNode iter = this.dllist.head;
+    Ocean ocean = new Ocean(this.width, this.height, this.st);
+    int runT;
+    int runL;
+    int x = 0;
+    int y = 0; //start out at 0,0.
+    while(iter != null){
+		runT = iter.data.type; 
+		runL = iter.data.size;
+		//System.out.println(runT + " " + runL);
+		
+		switch (runT){
+			case Ocean.EMPTY:
+			for (int i = 0; i < runL; i++){
+				if (x == this.width){
+					x = 0;
+					y++;
+					x++;
+				} else {
+					x++;
+				}
+			}
+			break;
+			case Ocean.FISH:
+			for (int i = 0; i < runL; i++){
+				if (x == this.width){
+					x = 0;
+					y++;
+					ocean.addFish(x,y);
+					x++;
+				} else {
+					ocean.addFish(x,y);
+					x++;
+				}
+			}
+			break;
+			
+			case Ocean.SHARK:
+			for (int i = 0; i < runL; i++){
+				if (x == this.width){
+					x = 0;
+					y++;
+					ocean.addShark(x,y,iter.starveTime);
+					x++;
+				} else {
+					ocean.addShark(x,y,iter.starveTime);
+					x++;
+				}
+			}
+			break;
+		}
+		
+		iter = iter.next;
+		//System.out.println(x + " " + y);
+	}
+	
+    return ocean;
   }
 
   /**
@@ -136,6 +229,53 @@ public class RunLengthEncoding {
   public RunLengthEncoding(Ocean sea) {
     // Your solution here, but you should probably leave the following line
     //   at the end.
+    //variables for iteration
+    this.width = sea.width();
+    this.height = sea.height();
+    this.st = sea.starveTime();
+    
+    //variables for linked list
+    this.dllist = new DLList();
+    int type = sea.cellContents(0,0);
+    int typeCopy = type;
+    int length = 0;
+    int hunger;
+    if (type == Ocean.SHARK) hunger = sea.sharkFeeding(0,0);
+    else hunger = -1;
+    int hungerCopy = hunger;
+    
+    for (int y = 0; y<this.height; y++){
+		for (int x = 0; x<this.width; x++){
+			type = sea.cellContents(x,y);
+			if (type == Ocean.SHARK) hunger = sea.sharkFeeding(x,y);
+			
+			//check if types are different
+			if (typeCopy != type){
+				if (typeCopy == Ocean.SHARK){
+					this.dllist.pushEnd(new DLNode(typeCopy, length, hunger));
+					//sharks need a hunger input, while empty/fish do not.
+				} else {
+					this.dllist.pushEnd(new DLNode(typeCopy, length));
+				}
+				typeCopy = type;
+				hungerCopy = hunger;
+				length = 0;
+			} //if types are same make sure that hungers haven't changed.
+			else if (hungerCopy != hunger && type==Ocean.SHARK){
+				this.dllist.pushEnd(new DLNode(typeCopy, length, hungerCopy));
+				hungerCopy = hunger;
+				length = 0;
+			}
+			length++;	
+		}
+	}
+	//the last segment hasn't been added, so we add it now:
+	if (type == Ocean.SHARK) this.dllist.pushEnd(new DLNode(type, length, hunger));
+	else this.dllist.pushEnd(new DLNode(type, length));
+    
+    preit.next = this.dllist.head;
+    this.iterator = preit;
+    
     check();
   }
 
@@ -155,6 +295,129 @@ public class RunLengthEncoding {
   public void addFish(int x, int y) {
     // Your solution here, but you should probably leave the following line
     //   at the end.
+    int width = this.width;
+    int height = this.height;
+    int EMPTY = Ocean.EMPTY;
+    
+	Ocean ocean = new Ocean(width,height,1); //Just a helper object
+	DLNode node = new DLNode(Ocean.FISH,1);
+	DLNode iter = new DLNode(); //iterator
+	int[] z = ocean.modReturn(x,y);
+	x = z[0]; y = z[1];
+	
+	//set start/end indices of the fish node.
+	node.setStart(x,y,width);
+	node.setEnd(x,y,width);
+	if (this.dllist.head == null){
+		/*	empty case: nothing to search for, and thus we will have to
+			add EMPTY, FISH, EMPTY.
+		  * Since addFish adds one fish at a time, we can always just push
+		  * a fish of length 1 for the EMPTY, FISH, EMPTY case.
+		  */	
+		if (x!=0 || y!=0){
+			//if not addFish(0,0)
+			DLNode emptyPrior = new DLNode(EMPTY,node.start);
+			emptyPrior.start = 0;
+			emptyPrior.end = node.start - 1;
+			this.dllist.pushEnd(emptyPrior);
+		}
+		//otherwise just add the fish, and then add an empty node at
+		//the end.
+		this.dllist.pushEnd(node);
+		//Do settings for the empty node after the fish.
+		DLNode emptyAfter = new DLNode(EMPTY,width*height-node.end-1);
+		emptyAfter.start = node.end + 1;
+		emptyAfter.end = width*height - 1;
+		//push it.
+		this.dllist.pushEnd(emptyAfter);
+	} else {
+		//nonempty case:
+		//find proper place to put the node and insert it, if it needs
+		//to be inserted:
+		iter = this.dllist.head;
+		iter.start=0; iter.end=iter.data.size+iter.start-1; //set iterator start/end initially.
+		DLNode otherLeg = new DLNode(EMPTY,1);
+		
+		while(iter != null){
+			//Assume node we add is in the middle of a long EMPTY segment. ie
+			/*
+			 * XXXXX---O------XXX
+			*/
+			if (node.start > iter.start && node.end < iter.end && iter.data.type==EMPTY){
+				//otherLeg here is a node representing a leg of empty space AFTER our fish node.
+				//update end/start.
+				otherLeg.end = iter.end;
+				otherLeg.start = node.end+1;
+				//update length
+				otherLeg.data.size = otherLeg.end-otherLeg.start+1;
+				//no need to update type (still empty).
+				
+				//alter first leg properties:
+				iter.end = node.start-1; //update "end" position (no need to update "start").
+				iter.data.size = iter.end-iter.start+1; //update length
+				//still empty, no need to update type.
+	
+				//add in our Fish
+				this.dllist.insertAfter(iter, node);
+				//add in latter leg.			
+				this.dllist.insertAfter(node,otherLeg);
+				break;
+			} else if (node.start==iter.start && node.end < iter.end && iter.data.type==EMPTY){
+				//XXXXO------XXXX
+				//insert before iter (empty leg)
+				this.dllist.insertBefore(iter, node);
+				//alter iter properties
+				iter.data.size--; //shrinks by 1.
+				iter.start++; //start position increases by 1.
+				//absorb prior X's if necessary.
+				if (node.prev!=null && (node.prev.data.type==node.data.type)){
+					node.prev.end++; 
+					node.prev.data.size++;
+					this.dllist.delete(node);
+				}
+				break;
+			} else if (node.start > iter.start && node.end == iter.end && iter.data.type==EMPTY){
+				//XXXX-------OXXXX
+				//insert after iter (empty leg)
+				this.dllist.insertAfter(iter, node);
+				//alter iter properties
+				iter.data.size--;
+				iter.end--;
+				//absorb later X's if necessary.
+				if (node.next!=null && (node.next.data.type == node.data.type)){
+					node.next.start--;
+					node.next.data.size++;
+					this.dllist.delete(node);
+				}
+				break;
+			} else if (node.start == iter.start && node.end == iter.end && iter.data.type==EMPTY){
+				System.out.println("debug this");
+				//XXXXOXXXX
+				//replace empty leg's .type with fish.
+				iter.data.type=Ocean.FISH;
+				node = iter;
+				//absorb prior and/or later X's if necessary.
+				if (node.prev!=null && (node.prev.data.type==node.data.type)){
+					node.prev.end++;
+					node.prev.data.size++;
+					node = node.prev;//node is now combined fish node, node.next
+					//is now an extraneous 1-length fish node.
+					this.dllist.delete(node.next);
+				}
+				if (node.next!=null && (node.next.data.type==node.data.type)){
+					node.next.start=node.start;
+					node.next.data.size+=node.data.size;
+					this.dllist.delete(node);
+				}
+				break;
+			}
+		iter = iter.next;
+		iter.start = iter.prev.end+1;
+		iter.end = iter.start + iter.data.size - 1;
+		}
+	}
+	
+      
     check();
   }
 
@@ -172,6 +435,128 @@ public class RunLengthEncoding {
   public void addShark(int x, int y) {
     // Your solution here, but you should probably leave the following line
     //   at the end.
+	int width = this.width;
+    int height = this.height;
+    int starveTime = this.st;
+    int EMPTY = Ocean.EMPTY;
+    
+	Ocean ocean = new Ocean(width,height,1); //Just a helper object
+	DLNode node = new DLNode(Ocean.SHARK,1,starveTime);
+	DLNode iter = new DLNode(); //iterator
+	int[] z = ocean.modReturn(x,y);
+	x = z[0]; y = z[1];
+	
+	//set start/end indices of the shark node.
+	node.setStart(x,y,width);
+	node.setEnd(x,y,width);
+	if (this.dllist.head == null){
+		/*	empty case: nothing to search for, and thus we will have to
+			add EMPTY, SHARK, EMPTY.
+		  * Since addFish adds one fish at a time, we can always just push
+		  * a fish of length 1 for the EMPTY, SHARK, EMPTY case.
+		  */	
+		if (x!=0 || y!=0){
+			//if not addShark(0,0)
+			DLNode emptyPrior = new DLNode(EMPTY,node.start);
+			emptyPrior.start = 0;
+			emptyPrior.end = node.start - 1;
+			this.dllist.pushEnd(emptyPrior);
+		}
+		//otherwise just add the fish, and then add an empty node at
+		//the end.
+		this.dllist.pushEnd(node);
+		//Do settings for the empty node after the fish.
+		DLNode emptyAfter = new DLNode(EMPTY,width*height-node.end-1);
+		emptyAfter.start = node.end + 1;
+		emptyAfter.end = width*height - 1;
+		//push it.
+		this.dllist.pushEnd(emptyAfter);
+	} else {
+		//nonempty case:
+		//find proper place to put the node and insert it, if it needs
+		//to be inserted:
+		iter = this.dllist.head;
+		iter.start=0; iter.end=iter.start+iter.data.size-1;
+		DLNode otherLeg = new DLNode(EMPTY,1);
+		while(iter != null){
+			//Assume node we add is in the middle of a long EMPTY segment. ie
+			/*
+			 * XXXXX---O------XXX
+			*/
+			if (node.start > iter.start && node.end < iter.end && iter.data.type==EMPTY){
+				otherLeg.end = iter.end;
+				otherLeg.start = node.end+1;
+				//update length
+				otherLeg.data.size = otherLeg.end-otherLeg.start+1;
+				//no need to update type (still empty).
+				
+				//alter first leg properties:
+				iter.end = node.start-1; //update "end" position (no need to update "start").
+				iter.data.size = iter.end-iter.start+1; //update length
+				//still empty, no need to update type.
+	
+				//add in our Shark
+				this.dllist.insertAfter(iter, node);
+				//add in latter leg.			
+				this.dllist.insertAfter(node,otherLeg);
+				break;
+			} else if (node.start==iter.start && node.end < iter.end && iter.data.type==EMPTY){
+				//XXXXO------XXXX
+				//insert before iter (empty leg)
+				this.dllist.insertBefore(iter, node);
+				//alter iter properties
+				iter.data.size--; //shrinks by 1.
+				iter.start++; //start position increases by 1.
+				//absorb prior X's if necessary.
+				if (node.prev!=null && (node.prev.data.type==node.data.type) &&
+						(node.prev.starveTime==node.starveTime)){
+					node.prev.end++;
+					node.prev.data.size++;
+					this.dllist.delete(node);
+				}
+				break;
+			} else if (node.start > iter.start && node.end == iter.end && iter.data.type==EMPTY){
+				//XXXX-------OXXXX
+				//insert after iter (empty leg)
+				this.dllist.insertAfter(iter, node);
+				//alter iter properties
+				iter.data.size--;
+				iter.end--;
+				//absorb later X's if necessary.
+				if (node.next!=null && (node.next.data.type == node.data.type) &&
+						(node.next.starveTime==node.starveTime)){
+					node.next.start--;
+					node.next.data.size++;
+					this.dllist.delete(node);
+				}
+				break;
+			} else if (node.start == iter.start && node.end == iter.end && iter.data.type==EMPTY){
+				//XXXXOXXXX
+				//replace empty leg's .type with fish.
+				iter.data.type=Ocean.SHARK;
+				node = iter;
+				//absorb prior and/or later X's if necessary.
+				if (node.prev!=null && (node.prev.data.type==node.data.type) &&
+						(node.prev.starveTime==node.starveTime)){
+					node.prev.end++;
+					node.prev.data.size++;
+					node = node.prev;//node is now combined fish node, node.next
+					//is now an extraneous 1-length fish node.
+					this.dllist.delete(node.next);
+				}
+				if (node.next!=null && (node.next.data.type==node.data.type) &&
+						(node.next.starveTime == node.starveTime)){
+					node.next.start=node.start;
+					node.next.data.size+=node.data.size;
+					this.dllist.delete(node);
+				}
+				break;
+			}
+		iter = iter.next;
+		iter.start = iter.prev.end+1;
+		iter.end = iter.data.size + iter.start-1;
+		}
+	}
     check();
   }
 
@@ -182,6 +567,59 @@ public class RunLengthEncoding {
    */
 
   public void check() {
-  }
+	  int size = this.width*this.height;
+	  int sizeCounter = 0;
+	  DLNode iter = new DLNode();
+	  iter = this.dllist.head;
+	  while (iter!=null){
+		  sizeCounter+=iter.data.size;
+		  iter = iter.next;
+	  }
 
+	  if (sizeCounter!=size) System.out.println("Sum of lengths != total length");
+	  iter = this.dllist.head;
+	  while (iter!=null && iter.next!=null){
+		  if (iter.data.type==iter.next.data.type){
+			  if (iter.data.type!=Ocean.SHARK || (iter.data.type==Ocean.SHARK &&
+				iter.starveTime==iter.next.starveTime))
+			  System.out.println("Compactness is violated");
+			  break;
+		  }
+		  iter=iter.next;
+	  }
+  }
+	public static void paint(Ocean sea) {
+		  if (sea != null) {
+			  int width = sea.width();
+			  int height = sea.height();
+
+			  /* Draw the ocean. */
+			  for (int x = 0; x < width + 2; x++) {
+				  System.out.print("-");
+			  }
+			  System.out.println();
+			  for (int y = 0; y < height; y++) {
+				  System.out.print("|");
+				  for (int x = 0; x < width; x++) {
+					  int contents = sea.cellContents(x, y);
+					  if (contents == Ocean.SHARK) {
+						  System.out.print('S');
+					  } else if (contents == Ocean.FISH) {
+						  System.out.print('~');
+					  } else {
+						  System.out.print(' ');
+					  }
+				  }
+				  System.out.println("|");
+			  }
+			  for (int x = 0; x < width + 2; x++) {
+				  System.out.print("-");
+			  }
+			  System.out.println();
+		  }
+	  }	
+	  
+	  public static void main(String args[]){
+		  
+	  }
 }
